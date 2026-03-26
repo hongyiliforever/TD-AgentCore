@@ -1,0 +1,36 @@
+version: '3.2'
+services:
+  td-js-copilot-gpt:
+    network_mode: "host"
+    image: td-js-copilot-gpt:1.0.0
+    hostname: td-js-copilot-gpt
+    container_name: td-js-copilot-gpt
+    security_opt:
+      - seccomp=unconfined
+    restart: always
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+    environment:
+      - LICENSE=I05DCiNUaHUgSmFuIDAxIDEwOjI0OjEwIENTVCAyMDI2CnByb2R1Y3Q9YW4tY29waWxvdApjb21wYW55PUFzaWFJbmZvCnN1cHBvcnQ9emhhbmdsZWkzNkBhc2lhaW5mby5jb20KcHVibGlzaGVyPUxlaSBaaGFuZwpleHBpcmU9MjAyNi8xMi8zMQpsb2NhdGlvbj1kZWZhdWx0CmN1c3RvbWVyPWRlZmF1bHQKc2lnbmF0dXJlPU1Dd0NGRnZoMnRwZlB4bE82UGdnSVVRSVd2aHdnV0NGQWhSNE1CbERmTy83YnJ6NDcxaGwzWFJseGoyMkxRXD1cPQo=
+      - CES_REMOTE_CONFIG_ENABLED=true
+      - LLM_ID=qwen3-32b
+      - GUARDRAIL_INPUT_ENABLED=false
+      - GUARDRAIL_OUTPUT_ENABLED=false
+      - LANGCHAIN_DEBUG=true
+      - EXPERIMENTAL=true
+      - SWAGGER_UI_ENABLED=true
+      - CES_ENABLED=true
+      - CES_HEARTBEAT_INTERVAL=60
+      - CES_URI=http://132.225.2.204:6066
+      - CES_HEARTBEAT_SOURCE_HOST=132.225.24.133
+      - CES_HEARTBEAT_SOURCE_PORT=9003
+      - PROJECT_VERSION=1.0.0
+    ports:
+      - "9003:9003"
+    volumes:
+      - /opt/gpt/.cache:/root/.cache
+      - /etc/localtime:/etc/localtime:ro
+      - $PWD/logs:/usr/app/gpt/logs:rw
+

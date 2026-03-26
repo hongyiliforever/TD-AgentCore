@@ -1,0 +1,24 @@
+
+
+[wo_agent_pgsql_local]
+host = 10.1.192.95
+port = 54321
+user = postgres
+passwd = retina
+db_name = agent_db
+wo_table = agent_report.tm_agent_report
+wo_table_init = agent_report.tm_complain_order_return
+wo_table_complain = agent_report.tm_complain_order
+hui_table=agent_report.tm_agent_report
+
+[wo_agent_pgsql]
+host = 132.225.24.133
+port = 5432
+user = aioss
+passwd = Cem123456
+db_name = cem
+wo_table = agent_report.tm_agent_report
+wo_table_init = agent_report.tm_complain_order_return
+wo_table_complain = agent_report.tm_complain_order
+hui_table = agent_report.tm_agent_report
+

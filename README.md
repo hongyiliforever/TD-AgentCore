@@ -1,93 +1,284 @@
-# iot-copilot-gpt
+# td-js-copilot-gpt
 
+IoT Copilot GPT - 质差定界派单智能体服务
 
+## 项目简介
 
-## Getting started
+本项目是基于 an-copilot 框架开发的智能工单处理系统，主要用于**质差定界派单**场景。通过智能体自动化完成质差识别检测、预警聚合、智能定界定位分析等核心业务流程。
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
+### 核心功能
 
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
+- **质差识别检测**: 根据指标阈值规则自动识别质差时段
+- **质差预警与聚合**: 基于预警规则触发预警并生成预警工单
+- **智能定界定位分析**: 通过错误码分析、聚类分析定位问题根因
 
-## Add your files
+## 技术栈
 
-- [ ] [Create](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#create-a-file) or [upload](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#upload-a-file) files
-- [ ] [Add files using the command line](https://docs.gitlab.com/ee/gitlab-basics/add-file.html#add-a-file-using-the-command-line) or push an existing Git repository with the following command:
+- Python 3.11
+- an-copilot 3.0.0
+- FastAPI
+- PostgreSQL
+- Docker
+
+## 项目结构
 
 ```
-cd existing_repo
-git remote add origin http://10.1.207.194:8081/ncdf/nc/nc-copilot/an-copilot-toolkits/wg-copilot/iot-copilot-gpt.git
-git branch -M master
-git push -uf origin master
+td-js-copilot-gpt/
+├── docker/                    # Docker 配置
+│   ├── Dockerfile
+│   ├── build.sh
+│   ├── startup.sh
+│   └── td-js-copilot-gpt.yml
+├── docs/                      # 文档
+│   ├── 数据库/
+│   │   └── 建表.sql
+│   └── 质差定界/
+│       ├── 质差定界派单_工具设计文档.md
+│       └── 质差定界派单_行为树.json
+├── src/                       # 源代码
+│   ├── agents/               # 智能体
+│   │   └── quality_defect/
+│   │       ├── quality_defect_agent.py
+│   │       ├── quality_defect_runner.py
+│   │       └── extract_elements_chain.py
+│   ├── api/                  # API 接口
+│   │   └── quality_defect_api.py
+│   ├── config/               # 配置
+│   │   ├── settings.py
+│   │   └── config.json
+│   ├── core/                 # 核心业务
+│   │   ├── order/
+│   │   │   └── order_query.py
+│   │   └── quality_defect/
+│   │       └── quality_defect_db.py
+│   ├── knowledges/           # 知识库
+│   │   └── reply_prompt.md
+│   ├── utils/                # 工具函数
+│   ├── main.py               # 入口文件
+│   └── chat.py               # Streamlit 聊天界面
+├── Makefile
+├── pyproject.toml
+└── README.md
 ```
 
-## Integrate with your tools
+## 前置条件
 
-- [ ] [Set up project integrations](http://10.1.207.194:8081/ncdf/nc/nc-copilot/an-copilot-toolkits/wg-copilot/iot-copilot-gpt/-/settings/integrations)
+- Python >=3.11, <3.12
+- Makefile (可选，Windows 可直接使用命令)
 
-## Collaborate with your team
+## 快速开始
 
-- [ ] [Invite team members and collaborators](https://docs.gitlab.com/ee/user/project/members/)
-- [ ] [Create a new merge request](https://docs.gitlab.com/ee/user/project/merge_requests/creating_merge_requests.html)
-- [ ] [Automatically close issues from merge requests](https://docs.gitlab.com/ee/user/project/issues/managing_issues.html#closing-issues-automatically)
-- [ ] [Enable merge request approvals](https://docs.gitlab.com/ee/user/project/merge_requests/approvals/)
-- [ ] [Set auto-merge](https://docs.gitlab.com/ee/user/project/merge_requests/merge_when_pipeline_succeeds.html)
+### 第一步：下载代码
 
-## Test and Deploy
+```bash
+git clone <repository_url>
+cd td-js-copilot-gpt
+```
 
-Use the built-in continuous integration in GitLab.
+### 第二步：创建虚拟环境
 
-- [ ] [Get started with GitLab CI/CD](https://docs.gitlab.com/ee/ci/quick_start/index.html)
-- [ ] [Analyze your code for known vulnerabilities with Static Application Security Testing (SAST)](https://docs.gitlab.com/ee/user/application_security/sast/)
-- [ ] [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/ee/topics/autodevops/requirements.html)
-- [ ] [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/ee/user/clusters/agent/)
-- [ ] [Set up protected environments](https://docs.gitlab.com/ee/ci/environments/protected_environments.html)
+```bash
+python -m venv .venv
+# Windows
+.\.venv\Scripts\activate
+# Linux/macOS
+source .venv/bin/activate
+python -V
+```
 
-***
+### 第三步：配置环境变量
 
-# Editing this README
+在项目根目录下创建 `.env` 文件：
 
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thanks to [makeareadme.com](https://www.makeareadme.com/) for this template.
+```shell
+# 模型地址配置
+DEFAULT_API_BASE=https://dashscope.aliyuncs.com/compatible-mode/v1
+DEFAULT_API_KEY=sk-xxx
+LLM_ID=qwen2-72b
 
-## Suggestions for a good README
+# CES 服务地址配置
+CES_ENABLED=false
+CES_URI=http://10.19.83.184:6066
+CES_HEARTBEAT_SOURCE_HOST=127.0.0.1
+CES_HEARTBEAT_SOURCE_PORT=5000
 
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
+# 开启 SWAGGER
+SWAGGER_UI_ENABLED=true
 
-## Name
-Choose a self-explaining name for your project.
+# 质差定界行为树编码
+quality_defect_btree_code=your_btree_code
+```
 
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
+### 第四步：安装依赖并运行
 
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
+**Linux/macOS:**
 
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
+```bash
+make init
+make run
+```
 
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
+**Windows (无 Make 环境):**
 
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
+```powershell
+# 安装依赖
+pip install . .[lint] .[test] .[package] --trusted-host 10.1.207.194 --default-timeout=600 --extra-index-url http://10.1.207.194:8099/nexus/repository/pypi-group/simple/ -i https://pypi.tuna.tsinghua.edu.cn/simple/
 
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
+# 运行服务
+python src/main.py -H 0.0.0.0 -P 5000
+```
 
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
+## API 接口
 
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
+服务启动后，访问 `http://localhost:5000/docs` 查看 Swagger API 文档。
 
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
+### 质差定界派单接口
 
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
+#### 1. 质差识别检测
 
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
+```bash
+POST /api/quality_defect/detect_anomaly
+```
 
-## License
-For open source projects, say how it is licensed.
+请求示例：
 
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+```json
+{
+  "order_id": "ORDER-001"
+}
+```
+
+#### 2. 质差预警与聚合
+
+```bash
+POST /api/quality_defect/generate_anomaly_alert
+```
+
+请求示例：
+
+```json
+{
+  "order_id": "ORDER-001",
+  "indicator_name": "寻呼成功率",
+  "defect_count": 2,
+  "defect_periods_str": "2026-01-28 11:00、2026-01-28 13:00"
+}
+```
+
+#### 3. 智能定界定位分析
+
+```bash
+POST /api/quality_defect/execute_fault_localization
+```
+
+请求示例：
+
+```json
+{
+  "order_id": "ORDER-001",
+  "alert_id": "WARN-2026012804",
+  "indicator_name": "寻呼成功率",
+  "defect_periods_str": "2个 (11:00/13:00)"
+}
+```
+
+### Agent 消息接口
+
+```bash
+POST /v1/api/agent-message
+```
+
+请求示例：
+
+```json
+{
+  "name": "质差定界派单智能体",
+  "query": "{\"order_id\": \"ORDER-001\"}",
+  "response_mode": "blocking",
+  "session_id": "af56d032-22bb-4585-98ae-f624510acc32",
+  "request_id": "a3712e54-e3b-480b-8179-1fad6fd044c3",
+  "user": "user"
+}
+```
+
+## 内嵌 CHAT 窗口
+
+基于 Streamlit 构建的测试界面：
+
+```bash
+make chat
+# 或
+streamlit run src/chat.py --server.address=127.0.0.1 --server.port=5000
+```
+
+## 配置参数
+
+### 模型配置
+
+| 参数 | 说明 | 默认值 |
+|------|------|--------|
+| `DEFAULT_API_BASE` | 大模型 API 地址 | https://dashscope.aliyuncs.com/compatible-mode/v1 |
+| `DEFAULT_API_KEY` | API 密钥 | - |
+| `LLM_ID` | 模型 ID | qwen2-72b |
+| `LLM_TEMPERATURE` | 温度参数 | 0.00000001 |
+| `LLM_MAX_TOKENS` | 最大 Token 数 | 2048 |
+
+### 服务配置
+
+| 参数 | 说明 | 默认值 |
+|------|------|--------|
+| `CES_ENABLED` | 是否启用 CES 服务 | false |
+| `CES_URI` | CES 服务地址 | - |
+| `SWAGGER_UI_ENABLED` | 是否开启 Swagger | false |
+| `WEB_CONCURRENCY` | FastAPI 工作进程数 | 1 |
+
+### 安全配置
+
+| 参数 | 说明 | 默认值 |
+|------|------|--------|
+| `SECURITY_ENABLED` | 是否启用安全认证 | false |
+| `SECURITY_API_SECRET_KEY` | API 密钥 | 随机生成 |
+| `OAUTH_ENABLED` | 是否启用 OAuth | false |
+
+### 护栏配置
+
+| 参数 | 说明 | 默认值 |
+|------|------|--------|
+| `GUARDRAIL_INPUT_ENABLED` | 输入护栏 | true |
+| `GUARDRAIL_OUTPUT_ENABLED` | 输出护栏 | false |
+| `GUARDRAIL_SENSITIVE_WORDS_FILE` | 敏感词文件 | - |
+
+## 常用命令
+
+```bash
+make init       # 初始化环境
+make run        # 启动服务
+make chat       # 启动聊天服务
+make lint       # 代码规范检查
+make fmt        # 代码格式化
+make coverage   # 测试覆盖率
+make clean      # 清理环境
+```
+
+## Docker 部署
+
+```bash
+cd docker
+./build.sh
+```
+
+或手动构建：
+
+```bash
+docker build -f docker/Dockerfile -t td-js-copilot-gpt:latest .
+docker run -d -p 9003:9003 td-js-copilot-gpt:latest
+```
+
+## 相关文档
+
+- [质差定界派单工具设计文档](docs/质差定界/质差定界派单_工具设计文档.md)
+- [数据库建表脚本](docs/数据库/建表.sql)
+
+## 许可证
+
+内部项目

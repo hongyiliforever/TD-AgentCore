@@ -109,8 +109,8 @@ services:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - OPENAI_API_BASE=${OPENAI_API_BASE:-}
       - MODEL_NAME=${RESEARCHER_MODEL:-gpt-4o-mini}
-    ports:
-      - "${RESEARCHER_PORT:-8002}:8002"
+    expose:
+      - "8002"
     depends_on:
       postgres:
         condition: service_healthy
@@ -138,8 +138,8 @@ services:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - OPENAI_API_BASE=${OPENAI_API_BASE:-}
       - MODEL_NAME=${WRITER_MODEL:-gpt-4o-mini}
-    ports:
-      - "${WRITER_PORT:-8003}:8003"
+    expose:
+      - "8003"
     depends_on:
       postgres:
         condition: service_healthy
@@ -167,8 +167,8 @@ services:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - OPENAI_API_BASE=${OPENAI_API_BASE:-}
       - MODEL_NAME=${REVIEWER_MODEL:-gpt-4o-mini}
-    ports:
-      - "${REVIEWER_PORT:-8004}:8004"
+    expose:
+      - "8004"
     depends_on:
       postgres:
         condition: service_healthy

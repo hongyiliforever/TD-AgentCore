@@ -69,7 +69,60 @@ class TaskManager:
         self._state_store = await get_state_store()
         self._tracer = get_tracer()
         self._semaphore = asyncio.Semaphore(self.max_concurrent_tasks)
+        
+        await self._recover_orphan_tasks()
+        
         logger.info(f"[TaskManager] Initialized with max_concurrent={self.max_concurrent_tasks}")
+    
+    async def _recover_orphan_tasks(self) -> None:
+        """
+        孤儿任务回收机制
+        
+        系统重启时，查找所有状态为 running 但在内存中不存在的任务，
+        将其状态重置为 failed 或重新加入执行队列
+        """
+        try:
+            async with self._state_store.db.acquire() as conn:
+                orphan_tasks = await conn.fetch(
+                    """
+                    SELECT id, task_type, input_data, trace_id 
+                    FROM tasks 
+                    WHERE status = $1 
+                    AND created_at > NOW() - INTERVAL '24 hours'
+                    """,
+                    TaskStatus.RUNNING
+                )
+            
+            if not orphan_tasks:
+                logger.info("[TaskManager] No orphan tasks found during recovery")
+                return
+            
+            logger.warning(f"[TaskManager] Found {len(orphan_tasks)} orphan tasks, recovering...")
+            
+            for task_row in orphan_tasks:
+                task_id = task_row["id"]
+                task_type = task_row["task_type"]
+                
+                if task_type in self._task_handlers:
+                    logger.info(f"[TaskManager] Resuming orphan task: {task_id}")
+                    
+                    async def run_task():
+                        async with self._semaphore:
+                            await self._execute_task(task_id, self.default_timeout)
+                    
+                    self._running_tasks[task_id] = asyncio.create_task(run_task())
+                else:
+                    logger.warning(f"[TaskManager] No handler for orphan task {task_id}, marking as failed")
+                    await self._state_store.update_task_status(
+                        task_id, 
+                        TaskStatus.FAILED,
+                        error_message="Task orphaned due to orchestrator restart - no handler available"
+                    )
+            
+            logger.info(f"[TaskManager] Orphan task recovery complete: {len(orphan_tasks)} tasks processed")
+            
+        except Exception as e:
+            logger.error(f"[TaskManager] Error during orphan task recovery: {e}")
     
     def register_handler(self, task_type: str, handler: Callable) -> None:
         """注册任务处理器"""
@@ -112,9 +165,17 @@ class TaskManager:
         return task.id
     
     async def _execute_task(self, task_id: str, timeout: float) -> None:
-        """执行任务"""
+        """执行任务（带分布式锁保护）"""
+        lock_resource = f"task:{task_id}"
+        lock_value = await self._state_store.acquire_lock(lock_resource, ttl=int(timeout) + 60)
+        
+        if not lock_value:
+            logger.warning(f"[TaskManager] Task {task_id} is already being executed by another instance")
+            return
+        
         task = await self._state_store.get_task(task_id)
         if not task:
+            await self._state_store.release_lock(lock_resource, lock_value)
             return
         
         span = self._tracer.start_trace(
@@ -123,6 +184,7 @@ class TaskManager:
         )
         
         start_time = datetime.utcnow()
+        lock_extend_task = None
         
         try:
             await self._state_store.update_task_status(
@@ -140,6 +202,21 @@ class TaskManager:
                     progress=progress,
                     current_step=current_step
                 )
+                await self._state_store.extend_lock(lock_resource, lock_value, ttl=60)
+            
+            async def lock_keeper():
+                while True:
+                    await asyncio.sleep(30)
+                    try:
+                        extended = await self._state_store.extend_lock(lock_resource, lock_value, ttl=60)
+                        if not extended:
+                            logger.warning(f"[TaskManager] Lock extension failed for task {task_id}")
+                            break
+                    except Exception as e:
+                        logger.error(f"[TaskManager] Lock keeper error: {e}")
+                        break
+            
+            lock_extend_task = asyncio.create_task(lock_keeper())
             
             result = await asyncio.wait_for(
                 handler(task.input_data, update_progress, task.trace_id),
@@ -177,6 +254,15 @@ class TaskManager:
             logger.error(f"[TaskManager] Task failed: {task_id}, error={e}")
             
         finally:
+            if lock_extend_task:
+                lock_extend_task.cancel()
+                try:
+                    await lock_extend_task
+                except asyncio.CancelledError:
+                    pass
+            
+            await self._state_store.release_lock(lock_resource, lock_value)
+            
             if task_id in self._running_tasks:
                 del self._running_tasks[task_id]
     

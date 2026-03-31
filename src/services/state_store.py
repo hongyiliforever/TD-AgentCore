@@ -487,18 +487,69 @@ class StateStore:
             for row in rows
         ]
     
-    async def acquire_lock(self, resource: str, ttl: int = 30) -> bool:
+    async def acquire_lock(self, resource: str, ttl: int = 30) -> Optional[str]:
+        """
+        获取分布式锁
+        
+        Args:
+            resource: 锁资源名称
+            ttl: 锁过期时间（秒）
+            
+        Returns:
+            锁的值（用于释放锁时验证），如果获取失败返回 None
+        """
         lock_key = f"lock:{resource}"
         lock_value = str(uuid.uuid4())
         
         acquired = await self.cache.set(lock_key, lock_value, nx=True, ex=ttl)
         
         if acquired:
+            return lock_value
+        return None
+    
+    async def extend_lock(self, resource: str, lock_value: str, ttl: int = 30) -> bool:
+        """
+        续期分布式锁
+        
+        Args:
+            resource: 锁资源名称
+            lock_value: 锁的值（用于验证所有权）
+            ttl: 新的过期时间（秒）
+            
+        Returns:
+            是否续期成功
+        """
+        lock_key = f"lock:{resource}"
+        current_value = await self.cache.get(lock_key)
+        
+        if current_value == lock_value:
+            await self.cache.expire(lock_key, ttl)
             return True
         return False
     
-    async def release_lock(self, resource: str) -> None:
-        await self.cache.delete(f"lock:{resource}")
+    async def release_lock(self, resource: str, lock_value: str) -> bool:
+        """
+        释放分布式锁（使用 Lua 脚本保证原子性）
+        
+        Args:
+            resource: 锁资源名称
+            lock_value: 锁的值（用于验证所有权）
+            
+        Returns:
+            是否成功释放
+        """
+        lock_key = f"lock:{resource}"
+        
+        lua_script = """
+        if redis.call("get", KEYS[1]) == ARGV[1] then
+            return redis.call("del", KEYS[1])
+        else
+            return 0
+        end
+        """
+        
+        result = await self.cache.eval(lua_script, 1, lock_key, lock_value)
+        return result == 1
 
 
 _state_store: Optional[StateStore] = None

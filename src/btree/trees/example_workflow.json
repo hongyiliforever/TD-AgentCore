@@ -1,0 +1,96 @@
+{
+  "name": "example_workflow",
+  "title": "示例工作流",
+  "description": "一个简单的示例行为树，展示各种节点类型的使用",
+  "type": "sequence",
+  "children": [
+    {
+      "name": "check_input",
+      "title": "检查输入",
+      "description": "检查是否有有效输入",
+      "type": "action",
+      "func": {
+        "type": "local",
+        "schema": {
+          "name": "check_input"
+        }
+      }
+    },
+    {
+      "name": "initialize",
+      "title": "初始化",
+      "description": "初始化处理环境",
+      "type": "action",
+      "func": {
+        "type": "local",
+        "schema": {
+          "name": "initialize"
+        }
+      }
+    },
+    {
+      "name": "process_selector",
+      "title": "处理方式选择",
+      "description": "根据条件选择处理方式",
+      "type": "selector",
+      "children": [
+        {
+          "name": "fast_process_sequence",
+          "title": "快速处理分支",
+          "description": "当条件满足时执行快速处理",
+          "type": "sequence",
+          "children": [
+            {
+              "name": "can_fast_process",
+              "title": "检查快速模式",
+              "description": "检查是否可以快速处理",
+              "type": "action",
+              "func": {
+                "type": "local",
+                "schema": {
+                  "name": "can_fast_process"
+                }
+              }
+            },
+            {
+              "name": "fast_process",
+              "title": "快速处理",
+              "description": "执行快速处理",
+              "type": "action",
+              "func": {
+                "type": "local",
+                "schema": {
+                  "name": "fast_process"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "standard_process",
+          "title": "标准处理",
+          "description": "执行标准处理流程",
+          "type": "action",
+          "func": {
+            "type": "local",
+            "schema": {
+              "name": "standard_process"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "output_result",
+      "title": "输出结果",
+      "description": "输出处理结果",
+      "type": "action",
+      "func": {
+        "type": "local",
+        "schema": {
+          "name": "output_result"
+        }
+      }
+    }
+  ]
+}

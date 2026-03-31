@@ -1,0 +1,192 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: td-agentcore-db
+    environment:
+      POSTGRES_USER: ${DB_USER:-agentcore}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-agentcore123}
+      POSTGRES_DB: ${DB_NAME:-agentcore}
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-agentcore} -d ${DB_NAME:-agentcore}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - agentcore-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: td-agentcore-redis
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - agentcore-network
+
+  nginx:
+    image: nginx:alpine
+    container_name: td-agentcore-nginx
+    ports:
+      - "${NGINX_HTTP_PORT:-80}:80"
+      - "${NGINX_HTTPS_PORT:-443}:443"
+    volumes:
+      - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./docker/nginx/conf.d:/etc/nginx/conf.d:ro
+    depends_on:
+      - api-gateway
+    networks:
+      - agentcore-network
+
+  api-gateway:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.api
+    container_name: td-agentcore-api
+    environment:
+      - DATABASE_URL=postgresql://${DB_USER:-agentcore}:${DB_PASSWORD:-agentcore123}@postgres:5432/${DB_NAME:-agentcore}
+      - REDIS_URL=redis://redis:6379/0
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_API_BASE=${OPENAI_API_BASE:-}
+      - DEBUG=${DEBUG:-false}
+    ports:
+      - "${API_PORT:-8000}:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - agentcore-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  orchestrator:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.orchestrator
+    container_name: td-agentcore-orchestrator
+    environment:
+      - DATABASE_URL=postgresql://${DB_USER:-agentcore}:${DB_PASSWORD:-agentcore123}@postgres:5432/${DB_NAME:-agentcore}
+      - REDIS_URL=redis://redis:6379/0
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_API_BASE=${OPENAI_API_BASE:-}
+    ports:
+      - "${ORCHESTRATOR_PORT:-8001}:8001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - agentcore-network
+
+  researcher-agent:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.agent
+    container_name: td-agentcore-researcher
+    environment:
+      - AGENT_NAME=researcher
+      - AGENT_TYPE=researcher
+      - DATABASE_URL=postgresql://${DB_USER:-agentcore}:${DB_PASSWORD:-agentcore123}@postgres:5432/${DB_NAME:-agentcore}
+      - REDIS_URL=redis://redis:6379/0
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_API_BASE=${OPENAI_API_BASE:-}
+      - MODEL_NAME=${RESEARCHER_MODEL:-gpt-4o-mini}
+    ports:
+      - "${RESEARCHER_PORT:-8002}:8002"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - agentcore-network
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+  writer-agent:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.agent
+    container_name: td-agentcore-writer
+    environment:
+      - AGENT_NAME=writer
+      - AGENT_TYPE=writer
+      - DATABASE_URL=postgresql://${DB_USER:-agentcore}:${DB_PASSWORD:-agentcore123}@postgres:5432/${DB_NAME:-agentcore}
+      - REDIS_URL=redis://redis:6379/0
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_API_BASE=${OPENAI_API_BASE:-}
+      - MODEL_NAME=${WRITER_MODEL:-gpt-4o-mini}
+    ports:
+      - "${WRITER_PORT:-8003}:8003"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - agentcore-network
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+  reviewer-agent:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.agent
+    container_name: td-agentcore-reviewer
+    environment:
+      - AGENT_NAME=reviewer
+      - AGENT_TYPE=reviewer
+      - DATABASE_URL=postgresql://${DB_USER:-agentcore}:${DB_PASSWORD:-agentcore123}@postgres:5432/${DB_NAME:-agentcore}
+      - REDIS_URL=redis://redis:6379/0
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_API_BASE=${OPENAI_API_BASE:-}
+      - MODEL_NAME=${REVIEWER_MODEL:-gpt-4o-mini}
+    ports:
+      - "${REVIEWER_PORT:-8004}:8004"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - agentcore-network
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  agentcore-network:
+    driver: bridge

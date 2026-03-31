@@ -3,9 +3,9 @@ requires = ["flit_core==3.9.0"]
 build-backend = "flit_core.buildapi"
 
 [project]
-name = "langchain-agent-framework"
+name = "td-agentcore"
 version = "1.0.0"
-description = "LangChain Agent Framework"
+description = "TD-AgentCore - A modular agent framework with Behavior Tree and MCP support"
 requires-python = ">=3.11, <3.12"
 dependencies = [
     "langchain>=0.3.0",

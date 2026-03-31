@@ -1,6 +1,3 @@
-from src.config.settings import Settings
+from src.config.settings import settings, Settings
 
-"""初始化配置"""
-settings = Settings()
-
-__all__ = ["settings"]
+__all__ = ["settings", "Settings"]

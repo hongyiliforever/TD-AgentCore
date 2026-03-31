@@ -1,9 +1,10 @@
 #!/bin/bash
 
-if [ -z "${OTEL_EXPORTER_OTLP_ENDPOINT}" ]; then
-  python src/main.py -H 0.0.0.0 -P 9003
-else
-  printenv | grep "^OTEL_"
-  opentelemetry-instrument python src/main.py -H 0.0.0.0 -P 9003
-fi
+export PYTHONPATH=${PYTHONPATH}:.
 
+if [ -z "${OTEL_EXPORTER_OTLP_ENDPOINT}" ]; then
+    uvicorn src.main:app --host 0.0.0.0 --port 8000
+else
+    printenv | grep "^OTEL_"
+    opentelemetry-instrument uvicorn src.main:app --host 0.0.0.0 --port 8000
+fi
